@@ -1,3 +1,6 @@
+# implements a stock buy / sell application
+# TODO: add buy/sell to index
+
 from cs50 import SQL
 from flask import Flask, flash, redirect, render_template, request, session, url_for
 from flask_session import Session
@@ -107,7 +110,7 @@ def history():
     shares = 0
     
     # get data in rows
-    db.execute("SELECT * FROM trans WHERE id = :id", id = u_id)
+    rows = db.execute("SELECT * FROM trans WHERE id = :id", id = u_id)
     
     # generates list of holdings
     stocks = []
@@ -120,7 +123,7 @@ def history():
             transaction = "SELL"
             shares = -int(row["shares"])
         
-        STOCK_DICT = {"transction": transaction, "time": row["time"], "symbol": row["symbol"], "shares": shares, "price": row["price"] }
+        STOCK_DICT = {"transaction": transaction, "time": row["time"], "symbol": row["symbol"], "shares": shares, "price": row["price"] }
         stocks.append(STOCK_DICT)
         
     return render_template("history.html", stocks = stocks)
