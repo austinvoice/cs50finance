@@ -39,8 +39,42 @@ def index():
 @login_required
 def buy():
     """Buy shares of stock."""
-    return apology("TODO")
-
+    
+    if request.method == "POST":
+        
+        # check if fields empty and positive value
+        if request.form.get("symbol") == "" or request.form.get("shares") == "" or int(request.form.get("shares")) <= 0:
+            return apology("must input valid symbol & number of shares")
+        
+        # check for valid symbol
+        else:
+            quote = lookup(request.form.get("symbol"))
+            if not quote:
+                return apology("Symbol not found")
+            else:
+                u_id = session["user_id"]
+                
+                #check if the user has enough money
+                price = float(quote["price"])
+                symbol = quote["symbol"]
+                cashdict = db.execute("SELECT cash FROM users WHERE id = :id", id = u_id)
+                cash = float(cashdict[0]["cash"])
+                shares = int(request.form.get("shares"))
+                money = price*shares
+                if cash < money:
+                    return apology("not enough money")
+                else:
+                    # insert data to transaction (trans) database
+                    db.execute("INSERT INTO trans (id, symbol, price, shares) VALUES (:id, :symbol, :price, :shares)", id = u_id, price = price, symbol = symbol, shares= shares)
+                    
+                    # update cash
+                    db.execute("UPDATE users SET cash = :cash WHERE id = :id", cash = cash - money, id = u_id)
+                    return redirect(url_for("index"))
+    else:        
+        return render_template("buy.html")
+   
+    return render_template("buy.html")
+                    
 @app.route("/history")
 @login_required
 def history():
@@ -96,12 +130,61 @@ def logout():
 @login_required
 def quote():
     """Get stock quote."""
-    return apology("TODO")
+    if request.method == "POST":
+        symbol = request.form.get("symbol")
+        quote = lookup(symbol)
+        
+        # if not found
+        if not quote:
+            return apology("Symbol not found")
+            
+        else:
+            # send value to quoted.html
+            return render_template("quoted.html", name = quote["name"], symbol = quote["symbol"], price = quote["price"])
+    
+    # show quote template
+    else:
+        return render_template("quote.html")
+            
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    """Register user."""
-    return apology("TODO")
+    
+    session.clear()
+    if request.method == "POST":
+        
+        # check if username entered
+        if request.form.get("username") == "":
+            return apology ("Please provide username")
+            
+        # check if password entered
+        if request.form.get("password") == "" or request.form.get("confirmation") == "":
+            return apology ("Please provide password")
+          
+        # check if password match  
+        if not request.form.get("password") == request.form.get("confirmation"):
+            return apology ("Passwords don't match")
+            
+        # check if the username exists already
+        rows = db.execute("SELECT * FROM users WHERE username = :username", username=request.form.get("username"))
+        if len(rows) != 0:
+            return apology ("Username already exists")
+            
+        else: 
+            #hash password
+            hashed = pwd_context.encrypt(request.form.get("password"))
+            
+            # add the user into the database
+            db.execute("INSERT INTO users (username, hash) VALUES(:username, :hash)", username = request.form.get("username"), hash = hashed )
+            
+            # remember the user registration
+            rows = db.execute("SELECT * FROM users WHERE username = :username", username=request.form.get("username"))
+            session["user_id"] = rows[0]["id"]
+            return redirect(url_for("index"))
+            
+    else:
+        return render_template("register.html")
+
 
 @app.route("/sell", methods=["GET", "POST"])
 @login_required
