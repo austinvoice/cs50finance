@@ -102,7 +102,29 @@ def buy():
 @login_required
 def history():
     """Show history of transactions."""
-    return apology("TODO")
+    u_id = session["user_id"]
+    transaction = ""
+    shares = 0
+    
+    # get data in rows
+    db.execute("SELECT * FROM trans WHERE id = :id", id = u_id)
+    
+    # generates list of holdings
+    stocks = []
+    for row in rows:
+        if int(row["shares"] > 0):
+            transaction = "BUY"
+            shares = int(row["shares"])
+        
+        else:
+            transaction = "SELL"
+            shares = -int(row["shares"])
+        
+        STOCK_DICT = {"transction": transaction, "time": row["time"], "symbol": row["symbol"], "shares": shares, "price": row["price"] }
+        stocks.append(STOCK_DICT)
+        
+    return render_template("history.html", stocks = stocks)
+    
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -225,23 +247,23 @@ def sell():
             if not quote:
                 return apology("Symbol not found")
 
-        else:
-            u_id = session["user_id"]
-            
-            # check if has that stock and enough shares
-            symbol = quote["symbol"]
-            rows = db.execute("SELECT symbol, SUM(shares) AS shares FROM trans WHERE id = :id GROUP BY symbol", id = u_id)
-            shares = int(rows[0]["shares"])
-            sellshares = int(request.form.get("shares"))
-            symbolbought = rows[0]["symbol"]
-            
-            if symbol != symbolbought:
-                return apology("No stock with that symbol to sell")
-                
             else:
-                if sellshares > shares:
-                    return apology("Not enough of those shares to sell")
+                u_id = session["user_id"]
+            
+                # check if has that stock and enough shares
+                symbol = quote["symbol"]
+                rows = db.execute("SELECT symbol, SUM(shares) AS shares FROM trans WHERE id = :id GROUP BY symbol", id = u_id)
+                shares = int(rows[0]["shares"])
+                sellshares = int(request.form.get("shares"))
+                symbolbought = rows[0]["symbol"]
+                
+                if symbol != symbolbought:
+                    return apology("No stock with that symbol to sell")
                     
+                else:
+                    if sellshares > shares:
+                        return apology("Not enough of those shares to sell")
+                        
                     else:
                         # get price
                         price = float(quote["price"])
@@ -253,8 +275,8 @@ def sell():
                         cash = float(cashdict[0]["cash"])
                         db.execute("UPDATE users SET cash = :cash WHERE id = :id", cash = cash + money, id = u_id)
                         
-                        return redirect(url_for(index))
-                        
+                        return redirect(url_for("index"))
+                            
     else:
         return render_template("sell.html")
                 
