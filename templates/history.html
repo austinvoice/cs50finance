@@ -1,0 +1,33 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Register
+{% endblock %}
+
+{% block main %}
+<div id="middle">
+<table class="table table-striped">
+
+    <thead>
+        <tr> <!-- name of column ROW1 -->
+            <th>Transaction</th> <th>Time</th> <th>Symbol</th> <th>Shares</th> <th>Price</th>
+        </tr>
+    </thead>
+
+    <tbody>
+    <!-- row 2 -->
+    {% for stock in stocks%}
+    <tr>
+        <td>{{stock["transaction"]}}</td>
+        <td>{{stock["time"]}}</td>
+        <td>{{stock["symbol"]}}</td>
+        <td>{{stock["shares"]}}</td>
+        <td>${{stock["price"]}}</td>
+    </tr>
+    {%endfor%}
+
+    </tbody>
+
+</table>
+</div>
+{% endblock %}

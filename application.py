@@ -33,7 +33,30 @@ db = SQL("sqlite:///finance.db")
 @app.route("/")
 @login_required
 def index():
-    return apology("TODO")
+    # get cash
+    u_id = session["user_id"]
+    cashdict = db.execute("SELECT cash FROM users WHERE id = :id", id = u_id)
+    cash = round(cashdict[0]["cash"], 2)
+    
+    # get rows
+    rows = db.execute("SELECT symbol, SUM(shares) AS shares FROM trans WHERE id = :id GROUP BY symbol", id = u_id)
+    
+    # get list of stocks held
+    stocks = []
+    i = 1
+    
+    # iterate over rows and display
+    for row in rows:
+        quote = lookup(row["symbol"])
+        total = round(float(quote["price"]) * float(row["shares"]), 2)
+        name = quote["name"]
+        
+        STOCK_DICT = {"symbol": row["symbol"], "name": name, "shares": row["shares"], "price": quote["price"], "TOTAL": total }
+        stocks.append(STOCK_DICT)
+        i = i + 1
+        
+    return render_template("index.html", stocks = stocks, i = i, cash = cash)
+    
 
 @app.route("/buy", methods=["GET", "POST"])
 @login_required
@@ -190,4 +213,49 @@ def register():
 @login_required
 def sell():
     """Sell shares of stock."""
-    return apology("TODO")
+    if request.method == "POST":
+        
+    # check if fields empty and positive value
+        if request.form.get("symbol") == "" or request.form.get("shares") == "" or int(request.form.get("shares")) <= 0:
+            return apology("must input valid symbol & number of shares")
+    
+        # check for valid symbol
+        else:
+            quote = lookup(request.form.get("symbol"))
+            if not quote:
+                return apology("Symbol not found")
+
+        else:
+            u_id = session["user_id"]
+            
+            # check if has that stock and enough shares
+            symbol = quote["symbol"]
+            rows = db.execute("SELECT symbol, SUM(shares) AS shares FROM trans WHERE id = :id GROUP BY symbol", id = u_id)
+            shares = int(rows[0]["shares"])
+            sellshares = int(request.form.get("shares"))
+            symbolbought = rows[0]["symbol"]
+            
+            if symbol != symbolbought:
+                return apology("No stock with that symbol to sell")
+                
+            else:
+                if sellshares > shares:
+                    return apology("Not enough of those shares to sell")
+                    
+                    else:
+                        # get price
+                        price = float(quote["price"])
+                        # insert data into database trans
+                        db.execute("INSERT INTO trans (id, symbol, price, shares) VALUES (:id, :symbol, :price, :shares)", id = u_id, price = price, symbol = symbol, shares =- sellshares)
+                        # update cash
+                        money = price * float(sellshares)
+                        cashdict = db.execute("SELECT cash FROM users WHERE id = :id", id = u_id)
+                        cash = float(cashdict[0]["cash"])
+                        db.execute("UPDATE users SET cash = :cash WHERE id = :id", cash = cash + money, id = u_id)
+                        
+                        return redirect(url_for(index))
+                        
+    else:
+        return render_template("sell.html")
+                
+            
